@@ -156,6 +156,7 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 	// 当前小车位置
 	double posx = -inputdata_0.front()->x;
 	double posy = inputdata_0.front()->y;
+    double carori = inputdata_0.front()->orientation;
     qDebug()<< "posx: " << posx<<" posy: "<<posy << endl;
     /*
 	// 最近目标点
@@ -196,7 +197,7 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 			double gx, gy;
 			double lx = dis * cos(angle);
 			double ly = dis * sin(angle);
-			LP2GP(lx, ly, posx, posy, ori, &gx, &gy);
+			LP2GP(lx, ly, posx, posy, carori, &gx, &gy);
 			obstacleGxGy.push_back(std::make_pair(gx, gy));
 
 			// 障碍物与小车距离
@@ -237,7 +238,7 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 			// 激光点在全局坐标系中的位置 单位m
 			double lx = moveDistance * cos(moveAngle);
 			double ly = moveDistance * sin(moveAngle);
-			LP2GP(lx, ly, posx, posy, angle, &availableX, &availableY);
+			LP2GP(lx, ly, posx, posy, carori, &availableX, &availableY);
 
 			double minObstacleDistance = 99999999999999;
 			// 计算预测位置与障碍物的最小距离
@@ -274,6 +275,9 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 	}
 	speed = bestSpeed;
 	steer = bestAngle * angleK;
+
+    speed = -speed;
+    steer = -steer;
 
 	// Show RGB image && compass
 	double ori = -((double)steer / 400.0) * (M_PI / 2.0);
