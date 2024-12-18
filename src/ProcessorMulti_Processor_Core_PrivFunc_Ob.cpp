@@ -141,12 +141,14 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 	short steer = 100; // [-400, 400]
 	short speed = 100; // [-180, 180]
 
+    int obstacleAngle = 60;
 	double obstacleWeight = 1;
 	double targetWeight = 100;
     // 小车可选角度（依赖于 steer）
 	int availableMaxAngle = 90;					// available angle: -45 ~ 45
     // 小车可选速度（依赖于 speed）
 	int availableMaxSpeed = 180;
+    double AvoidThreshold = 50;                //暂时用来测避障的
 
 	// 当前小车位置
 	double posx = -inputdata_0.front()->x;
@@ -167,9 +169,10 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 	short *urgData = inputdata_1.front()->data;
 	double urgRes = inputparams_1.front()->res;
 	std::vector<std::pair<double, double>> obstacleGxGy;
-	int obstacleAngle = 60;
 	int leftDatasum = 0, rightDatasum = 0, midDatasum = 0;
 	bool isAvoiding = false;
+
+    double minObDistance = (1<<20);
 	for (int i = 0; i < urgSize; i++)
 	{ // 60 degrees, left and right
 		if (urgData[i] == 0)
@@ -194,10 +197,15 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 
 			// 障碍物与小车距离
 			double distance = sqrt(pow(gx - posx, 2) + pow(gy - posy, 2));
-			if (distance < targetDistance) // 如果障碍物距离小于最近目标点距离，则走向目标点时存在障碍物，需要避障
+            minObDistance = min(minObDistance,distance);
+			if (distance < AvoidThreshold) // 如果障碍物距离小于最近目标点距离，则走向目标点时存在障碍物，需要避障
 				isAvoiding = true;
 		}
 	}
+
+    qDebug()<< "minObDistance: " << minObDistance << endl;
+    qDebug()<< "is avoiding: " << isAvoiding << endl;
+
 	int obstacleLength = obstacleGxGy.size();
 
 	double PI = 3.1415926535897932384626433832795;
