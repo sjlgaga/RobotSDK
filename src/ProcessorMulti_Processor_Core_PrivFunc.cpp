@@ -6,6 +6,8 @@
 //*******************Please add static libraries in .pro file*******************
 // e.g. unix:LIBS += ... or win32:LIBS += ...
 
+bool initialized = false;
+
 bool DECOFUNC(setParamsVarsOpenNode)(QString qstrConfigName, QString qstrNodeType, QString qstrNodeClass, QString qstrNodeName, void *paramsPtr, void *varsPtr)
 {
     XMLDomInterface xmlloader(qstrConfigName, qstrNodeType, qstrNodeClass, qstrNodeName);
@@ -155,6 +157,11 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
     qDebug() << "is turning right: " << vars->IsTurningRight << endl;
     qDebug() << "is avoiding: " << vars->IsAvoiding << endl;
     qDebug() << "turn stamp:" << vars->turnstamp << endl;
+
+
+    double posx = -inputdata_0.front()->x;
+	double posy = inputdata_0.front()->y;
+    drawCarPosition(posx, posy);
 
     int urgSize = inputdata_1.front()->datasize;
     double urgUnit = inputparams_1.front()->unit;
@@ -320,4 +327,27 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
     dataput[6] = 0x8F;
     outputdata->datagram = QByteArray(dataput, 7);
     return 1;
+}
+
+void drawCarPosition(double x, double y)
+{
+    static QGraphicsView *view = nullptr;
+    static QGraphicsScene *scene = nullptr;
+    static bool initialized = false;
+
+    // 第一次调用时初始化
+    if (!initialized) {
+        initialized = true;
+
+        scene = new QGraphicsScene;
+        view = new QGraphicsView(scene);
+        view->setWindowTitle("小车轨迹可视化");
+        view->resize(800, 600);
+        view->show();
+    }
+
+    // 在场景中绘制当前点（例如半径为2的圆点）
+    double radius = 2.0;
+    scene->addEllipse(x - radius, y - radius, radius * 2.0, radius * 2.0,
+                      QPen(Qt::black), QBrush(Qt::red));
 }

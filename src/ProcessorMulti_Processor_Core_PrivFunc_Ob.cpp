@@ -2,6 +2,7 @@
 
 #include "../NoEdit/ProcessorMulti_Processor_Core_PrivFunc.h"
 #include <cmath>
+#include <algorithm>
 //*******************Please add static libraries in .pro file*******************
 // e.g. unix:LIBS += ... or win32:LIBS += ...
 
@@ -95,7 +96,7 @@ void LP2GP(double lx, double ly, double posx, double posy, double ori, double *g
 // Input Port #0: Buffer_Size = 10, Params_Type = SourceDrainMono_Sensor_EncoderIMU_Params, Data_Type = SourceDrainMono_Sensor_EncoderIMU_Data
 // Input Port #1: Buffer_Size = 10, Params_Type = SensorTimer_Sensor_URG_Params, Data_Type = SensorTimer_Sensor_URG_Data
 // Input Port #2: Buffer_Size = 10, Params_Type = SensorTimer_Sensor_xtion_Params, Data_Type = SensorTimer_Sensor_xtion_Data
-bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVector<void *>> inputParams, QVector<QVector<void *>> inputData, void *outputData, QList<int> &outputPortIndex)
+bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVector<void *> > inputParams, QVector<QVector<void *> > inputData, void *outputData, QList<int> &outputPortIndex)
 {
 	ProcessorMulti_Processor_Core_Params *params = (ProcessorMulti_Processor_Core_Params *)paramsPtr;
 	ProcessorMulti_Processor_Core_Vars *vars = (ProcessorMulti_Processor_Core_Vars *)varsPtr;
@@ -141,6 +142,8 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 	short steer = 100; // [-400, 400]
 	short speed = 100; // [-180, 180]
 
+
+	const double PI = 3.1415926535897932384626433832795;
     int obstacleAngle = 60;
 	double obstacleWeight = 1;
 	double targetWeight = 100;
@@ -153,6 +156,7 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 	// 当前小车位置
 	double posx = -inputdata_0.front()->x;
 	double posy = inputdata_0.front()->y;
+    qDebug()<< "posx: " << posx<<" posy: "<<posy << endl;
     /*
 	// 最近目标点
 	double targetX = 0;
@@ -167,8 +171,8 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 	int urgSize = inputdata_1.front()->datasize;
 	double urgUnit = inputparams_1.front()->unit;
 	short *urgData = inputdata_1.front()->data;
-	double urgRes = inputparams_1.front()->res;
-	std::vector<std::pair<double, double>> obstacleGxGy;
+	const double urgRes = 0.5;
+	std::vector<std::pair<double, double> > obstacleGxGy;
 	int leftDatasum = 0, rightDatasum = 0, midDatasum = 0;
 	bool isAvoiding = false;
 
@@ -197,7 +201,7 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 
 			// 障碍物与小车距离
 			double distance = sqrt(pow(gx - posx, 2) + pow(gy - posy, 2));
-            minObDistance = min(minObDistance,distance);
+            minObDistance = std::min(minObDistance,distance);
 			if (distance < AvoidThreshold) // 如果障碍物距离小于最近目标点距离，则走向目标点时存在障碍物，需要避障
 				isAvoiding = true;
 		}
@@ -205,10 +209,9 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 
     qDebug()<< "minObDistance: " << minObDistance << endl;
     qDebug()<< "is avoiding: " << isAvoiding << endl;
+    qDebug()<<endl;
 
 	int obstacleLength = obstacleGxGy.size();
-
-	double PI = 3.1415926535897932384626433832795;
 
 	int angleK = 400 / (availableMaxAngle / 2); // each angle has linear relation with steer
 	int distanceK = 100; // each distance has linear relation with speed (distance = time * speed)
@@ -216,6 +219,7 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 	double bestEvaluation = 0;
 	double bestAngle = 0;
 	double bestSpeed = 0;
+    double ori = inputdata_0.front()->orientation;
 
 	// 动态窗口法 遍历所有可能的角度和速度
 	for (int i = 90 - availableMaxAngle / 2; i <= 90 + availableMaxAngle / 2; i++)
@@ -233,7 +237,7 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 			// 激光点在全局坐标系中的位置 单位m
 			double lx = moveDistance * cos(moveAngle);
 			double ly = moveDistance * sin(moveAngle);
-			LP2GP(lx, ly, posx, posy, ori, &availableX, &availableY);
+			LP2GP(lx, ly, posx, posy, angle, &availableX, &availableY);
 
 			double minObstacleDistance = 99999999999999;
 			// 计算预测位置与障碍物的最小距离

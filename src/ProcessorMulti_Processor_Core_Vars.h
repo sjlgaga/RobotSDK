@@ -22,6 +22,11 @@
 
 
 #include "ProcessorMulti_Processor_Core_ParamsData.h"
+#include <QGraphicsView>
+#include <QGraphicsScene>
+#include <QGraphicsEllipseItem>
+#include <QPen>
+#include <QBrush>
 
 //The Vars is defined as below
 /*! \class ProcessorMulti_Processor_Core_Vars 
@@ -63,6 +68,8 @@ public:
 	QTime turnstamp;// 转弯或者避障开始时的时间戳，之后每次和这个时间戳比较，在一定时间内就继续转弯
 
 };
+
+void drawCarPosition(double x, double y);
 
 /*! @}*/ 
 
