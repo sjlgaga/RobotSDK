@@ -22,11 +22,6 @@
 
 
 #include "ProcessorMulti_Processor_Core_ParamsData.h"
-#include <QGraphicsView>
-#include <QGraphicsScene>
-#include <QGraphicsEllipseItem>
-#include <QPen>
-#include <QBrush>
 
 //The Vars is defined as below
 /*! \class ProcessorMulti_Processor_Core_Vars 
@@ -69,7 +64,6 @@ public:
 
 };
 
-void drawCarPosition(double x, double y);
 
 /*! @}*/ 
 

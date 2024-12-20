@@ -151,11 +151,11 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 	int availableMaxAngle = 90;					// available angle: -45 ~ 45
     // 小车可选速度（依赖于 speed）
 	int availableMaxSpeed = 180;
-    double AvoidThreshold = 50;                //暂时用来测避障的
+    double AvoidThreshold = 500000;                //暂时用来测避障的
 
-	// 当前小车位置
-	double posx = -inputdata_0.front()->x;
-	double posy = inputdata_0.front()->y;
+    // 当前小车位置
+    double posx = inputdata_0.front()->x;
+    double posy = inputdata_0.front()->y;
     double carori = inputdata_0.front()->orientation;
     qDebug()<< "posx: " << posx<<" posy: "<<posy << endl;
     /*
@@ -176,6 +176,7 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 	std::vector<std::pair<double, double> > obstacleGxGy;
 	int leftDatasum = 0, rightDatasum = 0, midDatasum = 0;
 	bool isAvoiding = false;
+    std::pair<double,double> minObstacleGxGy = std::make_pair(0,0);
 
     double minObDistance = (1<<20);
 	for (int i = 0; i < urgSize; i++)
@@ -192,17 +193,23 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 		// 计算障碍物全局坐标 (只考虑前方障碍物)
 		if (i >= 180 - obstacleAngle && i <= 180 + obstacleAngle)
 		{
-			double dis = urgData[i] / urgUnit;
+            double dis = double(urgData[i]) / urgUnit;
 			double angle = (urgRes * i) / 180.0 * PI;
 			double gx, gy;
 			double lx = dis * cos(angle);
 			double ly = dis * sin(angle);
 			LP2GP(lx, ly, posx, posy, carori, &gx, &gy);
 			obstacleGxGy.push_back(std::make_pair(gx, gy));
+//            qDebug() << "lxly" << lx << " " << ly << endl;
+//            qDebug() << "gxgy" << gx << " " << gy << endl;
 
 			// 障碍物与小车距离
 			double distance = sqrt(pow(gx - posx, 2) + pow(gy - posy, 2));
-            minObDistance = std::min(minObDistance,distance);
+//            minObDistance = std::min(minObDistance,distance);
+            if(distance < minObDistance){
+                minObstacleGxGy = std::make_pair(gx,gy);
+                minObDistance = distance;
+            }
 			if (distance < AvoidThreshold) // 如果障碍物距离小于最近目标点距离，则走向目标点时存在障碍物，需要避障
 				isAvoiding = true;
 		}
@@ -214,21 +221,18 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 
 	int obstacleLength = obstacleGxGy.size();
 
-	int angleK = 400 / (availableMaxAngle / 2); // each angle has linear relation with steer
-	int distanceK = 100; // each distance has linear relation with speed (distance = time * speed)
+    double angleK = 400 / (availableMaxAngle / 2); // each angle has linear relation with steer
+    double distanceK = 10000; // each distance has linear relation with speed (distance = time * speed)
 
 	double bestEvaluation = 0;
 	double bestAngle = 0;
-	double bestSpeed = 0;
-    double ori = inputdata_0.front()->orientation;
+    double bestSpeed = 150;
 
 	// 动态窗口法 遍历所有可能的角度和速度
 	for (int i = 90 - availableMaxAngle / 2; i <= 90 + availableMaxAngle / 2; i++)
-	{
-		for (int j = -availableMaxSpeed; j <= availableMaxSpeed; j++)
-		{
+    {
 			// 计算每个角度对应的移动距离
-			double moveDistance = distanceK * j;
+            double moveDistance = 0.5;
 			// 计算每个角度对应的移动角度
 			double moveAngle = i / 180.0 * PI;
 
@@ -238,20 +242,24 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 			// 激光点在全局坐标系中的位置 单位m
 			double lx = moveDistance * cos(moveAngle);
 			double ly = moveDistance * sin(moveAngle);
+//            qDebug() << "posx: " << posx << " posy: " << posy << endl;
+//            qDebug() << "obx: " << minObstacleGxGy.first << " oby: " << minObstacleGxGy.second << endl;
+//            qDebug() << "x: " << availableY << "  y: " << availableY << endl;
 			LP2GP(lx, ly, posx, posy, carori, &availableX, &availableY);
 
-			double minObstacleDistance = 99999999999999;
+//            qDebug() << "dist: " << moveDistance << " cosA: " << cos(moveAngle) << " sinA: " << sin(moveAngle) << endl;
+            double minObstacleDistance = sqrt(pow(availableX -minObstacleGxGy.first, 2) + pow(availableY - minObstacleGxGy.second, 2));
 			// 计算预测位置与障碍物的最小距离
 			if (isAvoiding)
 			{
-				for (int k = 0; k < obstacleLength; k++)
-				{
-					double obstacleDistance = sqrt(pow(availableX - obstacleGxGy[k].first, 2) + pow(availableY - obstacleGxGy[k].second, 2));
-					if (obstacleDistance < minObstacleDistance)
-					{
-						minObstacleDistance = obstacleDistance;
-					}
-				}
+//				for (int k = 0; k < obstacleLength; k++)
+//				{
+//					double obstacleDistance = sqrt(pow(availableX - obstacleGxGy[k].first, 2) + pow(availableY - obstacleGxGy[k].second, 2));
+//					if (obstacleDistance < minObstacleDistance)
+//					{
+//						minObstacleDistance = obstacleDistance;
+//					}
+//				}
 			}
 			else
 			{
@@ -269,16 +277,16 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 			{
 				bestEvaluation = evaluation;
 				bestAngle = i;
-				bestSpeed = j;
+                bestSpeed = 150;
 			}
-		}
+
 	}
 	speed = bestSpeed;
-	steer = bestAngle * angleK;
+    steer = -(bestAngle - 90.0) * angleK;
 
-    speed = -speed;
-    steer = -steer;
-
+    speed = speed;
+    steer = steer;
+    qDebug() << bestAngle << "   " << steer << endl;
 	// Show RGB image && compass
 	double ori = -((double)steer / 400.0) * (M_PI / 2.0);
 	cv::Mat img;
