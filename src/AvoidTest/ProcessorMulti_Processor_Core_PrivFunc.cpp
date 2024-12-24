@@ -143,15 +143,20 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 	short speed = 100; // [-180, 180]
 
 
+    double targetX1 = 42;
+    double targetY2 = 2;
+
+    double targetX2 = 40;
+    double targetY2 = 36.8;
 	const double PI = 3.1415926535897932384626433832795;
-    int obstacleAngle = 60;
+    int obstacleAngle = 50;
 	double obstacleWeight = 1;
-	double targetWeight = 100;
+    double targetWeight = 10;
     // 小车可选角度（依赖于 steer）
 	int availableMaxAngle = 90;					// available angle: -45 ~ 45
     // 小车可选速度（依赖于 speed）
 	int availableMaxSpeed = 180;
-    double AvoidThreshold = 500000;                //暂时用来测避障的
+    double AvoidThreshold = 2;                //暂时用来测避障的
 
     // 当前小车位置
     double posx = inputdata_0.front()->x;
@@ -160,8 +165,7 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
     qDebug()<< "posx: " << posx<<" posy: "<<posy << endl;
     /*
 	// 最近目标点
-	double targetX = 0;
-	double targetY = 0;
+
 
 	// 最近目标点距离
 	double targetDistance = sqrt(pow(targetX - posx, 2) + pow(targetY - posy, 2));
@@ -249,6 +253,7 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 
 //            qDebug() << "dist: " << moveDistance << " cosA: " << cos(moveAngle) << " sinA: " << sin(moveAngle) << endl;
             double minObstacleDistance = sqrt(pow(availableX -minObstacleGxGy.first, 2) + pow(availableY - minObstacleGxGy.second, 2));
+
 			// 计算预测位置与障碍物的最小距离
 			if (isAvoiding)
 			{
@@ -267,10 +272,12 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
 			}
 
 			// 计算目标点距离
-			//double targetDistance = sqrt(pow(availableX - targetX, 2) + pow(availableY - targetY, 2));
-
+            double targetDistance1 = sqrt(pow(availableX - targetX1, 2) + pow(-availableY - targetY1, 2));
+            double targetDistance2 = sqrt(pow(availableX - targetX2, 2) + pow(-availableY - targetY2, 2));
+            double targetDistance = std::min(targetDistance1, targetDistance2);
 			// 评价函数（预测位置与障碍物的距离越大，评价函数越大；预测位置与目标点的距离越小，评价函数越大）
-			double evaluation = minObstacleDistance * obstacleWeight;
+            double evaluation = minObstacleDistance * obstacleWeight + targetWeight / targetDistance;
+//            qDebug() << "ob eval: " << minObstacleDistance * obstacleWeight << " target eval: "<< targetWeight / targetDistance << endl;
 
 			// 更新最优解
 			if (evaluation > bestEvaluation)
@@ -285,7 +292,7 @@ bool DECOFUNC(processMultiInputData)(void *paramsPtr, void *varsPtr, QVector<QVe
     steer = -(bestAngle - 90.0) * angleK;
 
     speed = speed;
-    steer = steer;
+    steer =  steer;
     qDebug() << bestAngle << "   " << steer << endl;
 	// Show RGB image && compass
 	double ori = -((double)steer / 400.0) * (M_PI / 2.0);
